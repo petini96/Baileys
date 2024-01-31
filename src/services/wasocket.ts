@@ -1,44 +1,48 @@
+// index.ts or server.ts
+import express, { Express, Request, Response, NextFunction } from 'express';
+import bodyParser from 'body-parser';
+import testeRoutes from '../../src/routes/teste.routes';
+import startSocketServer from '../../Example/example';
+  
 import { Boom } from '@hapi/boom'
 import NodeCache from 'node-cache'
 import readline from 'readline'
-import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey, WAMessage } from '../src'
-import MAIN_LOGGER from '../src/Utils/logger'
+import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey, WAMessage } from '../../src'
+import MAIN_LOGGER from '../../src/Utils/logger'
 import open from 'open'
 import fs from 'fs'
 
-import {UserNotifier} from '../src/Types/UserNotifier';
+import {UserNotifier} from '../../src/Types/UserNotifier';
 import { randomUUID } from 'crypto'
-
-import express, { Express, Request, Response, NextFunction } from 'express';
-import bodyParser from 'body-parser';
-import testeRoutes from '../src/routes/teste.routes';
-// import startSocket from '../Example/example';
-
+// import express from 'express'
+import { Phonenumber } from 'expresso-core'
 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-	
-const startApi = async () => {
-	app.use(bodyParser.urlencoded({ extended: false }));
-	app.use(bodyParser.json());
+ 
+ 
+    app.use(bodyParser.urlencoded({ extended: false }));
+    app.use(bodyParser.json());
 
-	app.use((req: Request, res: Response, next: NextFunction) => {
-	res.header("Access-Control-Allow-Origin", "*");
-	res.header(
-		"Access-Control-Allow-Headers",
-		"Origin, X-Requested-With, Content-Type, Accept, Authorization"
-	);
-	if (req.method === "OPTIONS") {
-		res.header("Access-Control-Allow-Methods", "PUT, POST, PATCH, DELETE, GET");
-		return res.status(200).send({});
-	}
-	next();
-	});
+    app.use((req: Request, res: Response, next: NextFunction) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header(
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    );
+    if (req.method === "OPTIONS") {
+        res.header("Access-Control-Allow-Methods", "PUT, POST, PATCH, DELETE, GET");
+        return res.status(200).send({});
+    }
+    next();
+    });
 
-	app.use('/notificacao', testeRoutes);
-}
-
+    app.use('/notificacao', testeRoutes);
+    app.listen(PORT, () => {
+        console.log(`Express server is listening on port ${PORT}`);
+    });
+ 
 
 
 const userNotifiers: UserNotifier[] = [
@@ -72,7 +76,6 @@ const userNotifiers: UserNotifier[] = [
     }
 ];
 
- 
 const logger = MAIN_LOGGER.child({})
 logger.level = 'trace'
 
@@ -99,8 +102,7 @@ setInterval(() => {
 }, 10_000)
 
 // start a connection
-const startSocketServer = async () => {
-	console.log("HERE HRE EHRE")
+const startSock = async() => {
 	const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info')
 	// fetch latest version of WA Web
 	const { version, isLatest } = await fetchLatestBaileysVersion()
@@ -126,6 +128,8 @@ const startSocketServer = async () => {
 	})
 
 	store?.bind(sock.ev)
+
+ 
 	// Pairing code for Web clients
 	if(usePairingCode && !sock.authState.creds.registered) {
 		if(useMobile) {
@@ -242,7 +246,7 @@ const startSocketServer = async () => {
 				if(connection === 'close') {
 					// reconnect if not logged out
 					if((lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut) {
-						startSocketServer()
+						startSock()
 					} else {
 						console.log('Connection closed. You are logged out.')
 					}
@@ -420,7 +424,6 @@ const startSocketServer = async () => {
 	async function aceitaContinuarRecebendoNotificacaoWhatsapp(userNotifier: UserNotifier, msg: WAMessage ) {
 		if(userNotifier.acceptWhatsappContact){
 			if(!userNotifier.hasBeenNotified){
-				console.log("AQUI CHEGUEI")
 				const idContato = userNotifier.number + '@s.whatsapp.net';
 				try {
 					await sock.sendMessage(idContato, { text: 'Deseja continuar recebendo este tipo de mensagem?' })
@@ -481,10 +484,5 @@ const startSocketServer = async () => {
 	
 }
 
-app.listen(PORT, () => {
-	console.log(`Express server is listening on port ${PORT}`);
-});
 
-startApi();
-startSocketServer();
-// export default startSocketServer;
+startSock();
